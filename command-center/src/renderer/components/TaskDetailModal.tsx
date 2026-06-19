@@ -18,6 +18,7 @@ export function TaskDetailModal({ subtask, milestone, onClose }: Props) {
   const [notes, setNotes] = useState(subtask.notes || '')
   const [isBlocked, setIsBlocked] = useState(subtask.status === 'blocked')
   const [blockedReason, setBlockedReason] = useState(subtask.blocked_reason || '')
+  const [copied, setCopied] = useState(false)
 
   const agentLog = tracker?.agent_log.filter((l) => l.target_id === subtask.id) || []
 
@@ -68,8 +69,9 @@ export function TaskDetailModal({ subtask, milestone, onClose }: Props) {
       onKeyDown={handleKeyDown}
     >
       <div
-        className="h-full bg-white shadow-2xl flex flex-col"
+        className="h-full shadow-2xl flex flex-col"
         style={{
+          background: 'var(--theme-surface)',
           width: 500,
           animation: 'slide-in-right 0.2s ease-out',
         }}
@@ -97,14 +99,19 @@ export function TaskDetailModal({ subtask, milestone, onClose }: Props) {
           <div className="flex items-center gap-2 mb-6">
             <span className="mono" style={{ fontSize: 11, color: 'var(--theme-muted)' }}>{subtask.id.toLowerCase()}</span>
             <button
-              onClick={() => navigator.clipboard.writeText(subtask.id)}
-              className="cursor-pointer"
+              onClick={() => {
+                navigator.clipboard.writeText(subtask.id).then(() => {
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 2000)
+                }).catch(err => console.error('Failed to copy ID', err))
+              }}
+              className="cursor-pointer transition-colors"
               style={{
-                fontSize: 10, padding: '2px 6px', border: '1px solid var(--theme-border)',
-                background: 'transparent', borderRadius: 4, color: 'var(--theme-muted)'
+                fontSize: 10, padding: '2px 6px', border: copied ? '1px solid #22c55e' : '1px solid var(--theme-border)',
+                background: copied ? '#22c55e20' : 'transparent', borderRadius: 4, color: copied ? '#22c55e' : 'var(--theme-muted)'
               }}
             >
-              Copy ID
+              {copied ? '✓ Copied' : 'Copy ID'}
             </button>
           </div>
 
@@ -233,7 +240,7 @@ export function TaskDetailModal({ subtask, milestone, onClose }: Props) {
                 <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-muted)', display: 'block', marginBottom: 6, letterSpacing: '0.05em' }}>NOTES</label>
                 <textarea
                   style={{
-                    width: '100%', minHeight: 80, background: '#f9fafb',
+                    width: '100%', minHeight: 80, background: 'var(--theme-dark)',
                     border: '1px solid var(--theme-border)', borderRadius: 6, padding: '12px',
                     fontSize: 13, color: 'var(--theme-primary-text)', resize: 'vertical'
                   }}
@@ -244,7 +251,7 @@ export function TaskDetailModal({ subtask, milestone, onClose }: Props) {
               </div>
 
               {/* Milestone link */}
-              <div style={{ padding: '16px', background: '#f9fafb', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid var(--theme-border)' }}>
+              <div style={{ padding: '16px', background: 'var(--theme-dark)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid var(--theme-border)' }}>
                 <div>
                   <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--theme-muted)', letterSpacing: '0.05em', marginBottom: 4 }}>MILESTONE</div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-primary-text)' }}>{milestone.title}</div>
@@ -322,7 +329,7 @@ export function TaskDetailModal({ subtask, milestone, onClose }: Props) {
                 onClick={onClose}
                 className="cursor-pointer transition-opacity hover:opacity-80"
                 style={{
-                  padding: '8px 16px', fontSize: 12, fontWeight: 600, background: 'white',
+                  padding: '8px 16px', fontSize: 12, fontWeight: 600, background: 'var(--theme-dark)',
                   border: '1px solid var(--theme-border)', borderRadius: 6, color: 'var(--theme-primary-text)'
                 }}
               >

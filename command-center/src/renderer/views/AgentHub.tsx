@@ -50,20 +50,20 @@ export function AgentHub() {
   const externals = agents.filter((a) => a.type === 'external')
 
   // Stats
-  const todayLog = tracker.agent_log.filter((l) => {
+  const todayLog = (tracker.agent_log || []).filter((l) => {
     return new Date(l.timestamp).toISOString().split('T')[0] === new Date().toISOString().split('T')[0]
   })
   const completedToday = todayLog.filter((l) => l.action === 'task_approved').length
   const inProgressCount = tracker.milestones.reduce(
-    (s, m) => s + m.subtasks.filter((t) => t.status === 'in_progress').length, 0
+    (s, m) => s + (m.subtasks || []).filter((t) => t.status === 'in_progress').length, 0
   )
   const blockedCount = tracker.milestones.reduce(
-    (s, m) => s + m.subtasks.filter((t) => t.status === 'blocked').length, 0
+    (s, m) => s + (m.subtasks || []).filter((t) => t.status === 'blocked').length, 0
   )
 
   // Activity feed
   const filteredLog = useMemo(() => {
-    let logs = [...tracker.agent_log].sort(
+    let logs = [...(tracker.agent_log || [])].sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     )
     if (agentFilter !== 'all') logs = logs.filter((l) => l.agent_id === agentFilter)

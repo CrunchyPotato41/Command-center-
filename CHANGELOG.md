@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2026-06-19
+
+### Added
+- Created `dev.bat` shortcut and added it to `.gitignore`.
+- Included `.env` config within the `.exe` package build to ensure `PROJECT_ROOT` resolves correctly on startup.
+- Added visual "Copied" feedback state to the Copy ID button in the Task Details modal.
+
+### Fixed
+- Disabled automatic Chrome DevTools opening on app launch in production.
+- Converted hardcoded light mode backgrounds in the Task Detail Modal to use proper CSS theme variables for dark mode compatibility.
+- Fixed potential UI crashes in Agent Hub and App caused by undefined values (`agent_log`, `subtasks`, `unlisten`).
+
 ## [1.0.0] - 2026-06-19
 
 ### Added

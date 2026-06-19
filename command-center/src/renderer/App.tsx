@@ -31,7 +31,9 @@ export default function App() {
       setTracker(JSON.parse(json))
     })
 
-    return () => unlisten()
+    return () => {
+      if (typeof unlisten === 'function') unlisten()
+    }
   }, [setTracker])
 
   return (

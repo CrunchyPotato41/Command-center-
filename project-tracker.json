@@ -30,7 +30,7 @@
       "domain": "backend",
       "phase": "phase1",
       "planned_start": "2026-06-16",
-      "planned_end": "2026-06-30",
+      "planned_end": "2026-06-18",
       "actual_start": "2026-06-01",
       "actual_end": "2026-06-14",
       "drift_days": -1,
@@ -134,6 +134,29 @@
           "depends_on": [],
           "last_run_id": null,
           "builder_prompt": null
+        },
+        {
+          "id": "MS_1477",
+          "label": "New Task",
+          "status": "todo",
+          "done": false,
+          "assignee": null,
+          "blocked_by": null,
+          "blocked_reason": null,
+          "completed_at": null,
+          "completed_by": null,
+          "priority": "p2",
+          "notes": null,
+          "prompt": null,
+          "context_files": [],
+          "reference_docs": [],
+          "acceptance_criteria": [],
+          "constraints": [],
+          "agent_target": null,
+          "execution_mode": "agent",
+          "depends_on": [],
+          "last_run_id": null,
+          "builder_prompt": null
         }
       ]
     },
@@ -160,7 +183,7 @@
         {
           "id": "t3",
           "label": "Swimlane View",
-          "status": "t3",
+          "status": "todo",
           "done": false,
           "assignee": "agent-2",
           "priority": "P1",
@@ -173,7 +196,7 @@
         {
           "id": "t4",
           "label": "Kanban Board",
-          "status": "t4",
+          "status": "todo",
           "done": false,
           "assignee": "agent-1",
           "priority": "P2",
@@ -186,7 +209,7 @@
         {
           "id": "t5",
           "label": "Agent Logs Pane",
-          "status": "t3",
+          "status": "todo",
           "done": false,
           "assignee": null,
           "priority": "P3",
@@ -199,7 +222,7 @@
         {
           "id": "MS_4389",
           "label": "New Task: Click to edit description",
-          "status": "MS_4389",
+          "status": "todo",
           "done": false,
           "assignee": null,
           "blocked_by": null,
@@ -222,7 +245,7 @@
         {
           "id": "MS_6132",
           "label": "New Task: Click to edit description",
-          "status": "MS_6132",
+          "status": "todo",
           "done": false,
           "assignee": null,
           "blocked_by": null,
@@ -268,7 +291,7 @@
         {
           "id": "MS_2522",
           "label": "New Task: Click to edit description",
-          "status": "review",
+          "status": "todo",
           "done": false,
           "assignee": null,
           "blocked_by": null,
@@ -291,7 +314,7 @@
         {
           "id": "MS_6522",
           "label": "New Task: Click to edit description",
-          "status": "in_progress",
+          "status": "todo",
           "done": false,
           "assignee": null,
           "blocked_by": null,

@@ -18,7 +18,8 @@
       "output": "dist"
     },
     "files": [
-      "out/**/*"
+      "out/**/*",
+      ".env"
     ],
     "win": {
       "target": "nsis"

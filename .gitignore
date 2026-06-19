@@ -42,3 +42,4 @@ lerna-debug.log*
 # Binaries
 *.zip
 *.exe
+dev.bat
