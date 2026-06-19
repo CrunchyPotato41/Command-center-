@@ -1,0 +1,44 @@
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# AI Planning and Agent Folders
+.agents/
+.planning/
+.gemini/
+.mcp.json
+
+# Build outputs
+command-center/out/
+command-center/dist/
+command-center-mcp/dist/
+
+# Electron Vite defaults
+.vscode/
+*.local
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# MacOS
+.DS_Store
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Binaries
+*.zip
+*.exe
