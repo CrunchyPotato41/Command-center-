@@ -7,6 +7,11 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - Rewrote the `README.md` to remove emojis and adopt a more professional, human-readable tone.
 
+### Fixed
+- Fixed a potential server crash in the MCP tool logic caused by improperly structured array inputs (`tags`, `acceptance_criteria`, etc).
+- Resolved a critical UI bug where malformed task labels could crash the React rendering tree.
+- Improved the task ID generation logic to prevent duplicate keys and drag-and-drop collisions.
+
 ### Added
 - Added the `docs/` folder to `.gitignore` to prevent tracking local documentation templates.
 

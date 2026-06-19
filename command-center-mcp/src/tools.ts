@@ -453,7 +453,7 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
 
     case 'log_action': {
       const agentId = args.agent_id || 'orchestrator';
-      const tags = args.tags || [];
+      const tags = Array.isArray(args.tags) ? args.tags : [];
       if (!tags.includes('mcp')) tags.push('mcp');
       state.agent_log.push({ id: genId(), agent_id: agentId, action: args.action, target_type: 'entity', target_id: args.task_id, description: args.description, timestamp: now, tags });
       touchAgent(state, agentId);
@@ -468,10 +468,10 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
       const changes: string[] = [];
       if (args.prompt !== undefined) { found.subtask.prompt = args.prompt; changes.push('prompt'); }
       if (args.builder_prompt !== undefined) { found.subtask.builder_prompt = args.builder_prompt; changes.push('builder_prompt'); }
-      if (args.acceptance_criteria !== undefined) { found.subtask.acceptance_criteria = args.acceptance_criteria; changes.push('acceptance_criteria'); }
-      if (args.constraints !== undefined) { found.subtask.constraints = args.constraints; changes.push('constraints'); }
-      if (args.context_files !== undefined) { found.subtask.context_files = args.context_files; changes.push('context_files'); }
-      if (args.reference_docs !== undefined) { found.subtask.reference_docs = args.reference_docs; changes.push('reference_docs'); }
+      if (args.acceptance_criteria !== undefined) { found.subtask.acceptance_criteria = Array.isArray(args.acceptance_criteria) ? args.acceptance_criteria : []; changes.push('acceptance_criteria'); }
+      if (args.constraints !== undefined) { found.subtask.constraints = Array.isArray(args.constraints) ? args.constraints : []; changes.push('constraints'); }
+      if (args.context_files !== undefined) { found.subtask.context_files = Array.isArray(args.context_files) ? args.context_files : []; changes.push('context_files'); }
+      if (args.reference_docs !== undefined) { found.subtask.reference_docs = Array.isArray(args.reference_docs) ? args.reference_docs : []; changes.push('reference_docs'); }
       
       state.agent_log.push({ id: genId(), agent_id: 'orchestrator', action: 'task_enriched', target_type: 'subtask', target_id: args.task_id, description: `Enriched ${changes.join(', ')}`, timestamp: now, tags: ['enrich', 'mcp'] });
       touchAgent(state, 'orchestrator');

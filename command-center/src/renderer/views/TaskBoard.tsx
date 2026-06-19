@@ -40,7 +40,8 @@ const EXEC_MODE_COLORS: Record<string, string> = {
 // ─── Task Card ───────────────────────────────────────────────
 
 function TaskCardContent({ subtask, isOverlay = false, onClick }: { subtask: Subtask; isOverlay?: boolean; onClick?: () => void }) {
-  const [titlePart, ...descParts] = subtask.label.split(/[:\-–]/)
+  const labelStr = subtask.label || 'Untitled'
+  const [titlePart, ...descParts] = labelStr.split(/[:\-–]/)
   const desc = descParts.join(' ').trim()
   const borderColor = COLUMNS.find(c => c.id === subtask.status)?.color || '#9B9BAA'
 
@@ -371,7 +372,7 @@ export function TaskBoard() {
         {/* Add Task Button */}
         <button
           onClick={() => {
-            const id = `MS_${Math.floor(Math.random()*10000)}`
+            const id = `MS_${Date.now()}_${Math.floor(Math.random()*1000)}`
             updateTracker(draft => {
               const m = draft.milestones[milestoneIdx]
               if (m) {
@@ -493,7 +494,7 @@ export function TaskBoard() {
                 domain={milestone.domain}
                 onCardClick={setSelectedTask}
                 onAddTask={(status) => {
-                  const id = `MS_${Math.floor(Math.random()*10000)}`
+                  const id = `MS_${Date.now()}_${Math.floor(Math.random()*1000)}`
                   updateTracker(draft => {
                     const m = draft.milestones[milestoneIdx]
                     if (m) {
