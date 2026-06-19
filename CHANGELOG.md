@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2026-06-19
+
+### Changed
+- Rewrote the `README.md` to remove emojis and adopt a more professional, human-readable tone.
+
+### Added
+- Added the `docs/` folder to `.gitignore` to prevent tracking local documentation templates.
+
 ## [1.0.1] - 2026-06-19
 
 ### Added
