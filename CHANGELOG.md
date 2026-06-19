@@ -5,7 +5,6 @@ All notable changes to this project will be documented in this file.
 ## [1.0.2] - 2026-06-19
 
 ### Changed
-- Rewrote the `README.md` to remove emojis and adopt a more professional, human-readable tone.
 
 ### Fixed
 - Fixed a potential server crash in the MCP tool logic caused by improperly structured array inputs (`tags`, `acceptance_criteria`, etc).
