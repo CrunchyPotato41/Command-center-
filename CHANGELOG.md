@@ -2,7 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-##1.0.3- [2026-06-20]
+## [1.0.4] - 2026-06-21
+
+### Added
+- Added "Reassign" and "Delegate" MCP tools for robust task ownership transfer.
+- Implemented a generic `update_task_fields` MCP tool to handle ad-hoc field modifications.
+
+### Changed
+- Modified task update logic to preserve all existing task fields during updates, preventing data loss (e.g., description truncation).
+- Updated task management UI to support complex task objects, including `parentTaskId` and `isEpic` flags.
+
+## [1.0.3] - 2026-06-20
 
 ### Added
 - Added `glob` dependency to MCP server for enhanced file tracking.
