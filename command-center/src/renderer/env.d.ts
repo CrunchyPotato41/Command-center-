@@ -15,5 +15,10 @@ interface Window {
   api: {
     platform: string
     tracker: TrackerAPI
+    window: {
+      close: () => void
+      minimize: () => void
+      maximize: () => void
+    }
   }
 }

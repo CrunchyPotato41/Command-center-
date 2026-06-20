@@ -11,7 +11,7 @@ const TAG_COLORS: Record<string, string> = {
   enrich: '#8286FF',
   agent: '#14B8A6',
   mcp: '#585CF0',
-  reset: '#9B9BAA',
+  reset: '#64748b',
   system: '#6366F1',
   note: '#f59e0b',
   milestone: '#EC4899',
@@ -93,7 +93,7 @@ export function AgentHub() {
   }
 
   const statusDot = (status: string) => {
-    const color = status === 'active' ? '#22c55e' : status === 'idle' ? '#f59e0b' : '#9B9BAA'
+    const color = status === 'active' ? '#22c55e' : status === 'idle' ? '#f59e0b' : '#64748b'
     return <span className="inline-block w-2 h-2 rounded-full" style={{ background: color }} />
   }
 
@@ -231,7 +231,7 @@ export function AgentHub() {
                     <div
                       style={{
                         width: 12, height: 12, borderRadius: '50%',
-                        background: agent?.color || '#9B9BAA'
+                        background: agent?.color || '#64748b'
                       }}
                     />
                     <span style={{ flex: 1 }}>{agent?.name || agentId}</span>
@@ -323,7 +323,7 @@ export function AgentHub() {
                         <div
                           style={{
                             width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                            background: agent?.color || '#9B9BAA',
+                            background: agent?.color || '#64748b',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             fontSize: 8, fontWeight: 700, color: '#fff', marginTop: 1
                           }}
@@ -347,8 +347,8 @@ export function AgentHub() {
                                 key={tag}
                                 className="tag"
                                 style={{
-                                  background: `${TAG_COLORS[tag] || '#9B9BAA'}15`,
-                                  color: TAG_COLORS[tag] || '#9B9BAA',
+                                  background: `${TAG_COLORS[tag] || '#64748b'}15`,
+                                  color: TAG_COLORS[tag] || '#64748b',
                                   fontSize: 8
                                 }}
                               >

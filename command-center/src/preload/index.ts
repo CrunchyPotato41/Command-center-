@@ -18,5 +18,10 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.on('tracker:updated', handler)
       return () => ipcRenderer.removeListener('tracker:updated', handler)
     }
+  },
+  window: {
+    close: () => ipcRenderer.send('window:close'),
+    minimize: () => ipcRenderer.send('window:minimize'),
+    maximize: () => ipcRenderer.send('window:maximize')
   }
 })

@@ -48,6 +48,8 @@ const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
   }
 ]
 
+import { motion } from 'framer-motion'
+
 export function TabBar() {
   const activeTab = useStore((s) => s.activeTab)
   const setActiveTab = useStore((s) => s.setActiveTab)
@@ -66,23 +68,33 @@ export function TabBar() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer"
+            className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-150 cursor-pointer"
             style={{
-              background: isActive ? '#585CF0' : 'transparent',
               color: isActive ? '#fff' : 'var(--theme-muted)',
+              background: 'transparent'
             }}
             onMouseEnter={(e) => {
-              if (!isActive) e.currentTarget.style.background = 'var(--theme-hover)'
+              if (!isActive) e.currentTarget.style.color = 'var(--theme-primary-text)'
             }}
             onMouseLeave={(e) => {
-              if (!isActive) e.currentTarget.style.background = 'transparent'
+              if (!isActive) e.currentTarget.style.color = 'var(--theme-muted)'
             }}
           >
-            {tab.icon}
-            <span>{tab.label}</span>
+            {isActive && (
+              <motion.div
+                layoutId="tab-indicator"
+                className="absolute inset-0 rounded-md"
+                style={{ background: '#585CF0', zIndex: 0 }}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-1.5">
+              {tab.icon}
+              {tab.label}
+            </span>
             {tab.id === 'agent-hub' && hasRecentActivity && (
               <span
-                className="animate-pulse-dot absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full"
+                className="animate-pulse-dot absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full z-20"
                 style={{ background: '#22c55e' }}
               />
             )}

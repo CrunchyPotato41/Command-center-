@@ -22,9 +22,10 @@ import { CSS } from '@dnd-kit/utilities'
 import { useStore, Milestone, Subtask, selectMilestoneProgress } from '../store'
 import { ProgressRing } from '../components/ProgressRing'
 import { TaskDetailModal } from '../components/TaskDetailModal'
+import { motion } from 'framer-motion'
 
 const COLUMNS = [
-  { id: 'todo', label: 'TO DO', color: '#9B9BAA' },
+  { id: 'todo', label: 'TO DO', color: '#64748b' },
   { id: 'in_progress', label: 'IN PROGRESS', color: '#585CF0' },
   { id: 'review', label: 'REVIEW', color: '#f59e0b' },
   { id: 'done', label: 'DONE', color: '#22c55e' },
@@ -43,7 +44,7 @@ function TaskCardContent({ subtask, isOverlay = false, onClick }: { subtask: Sub
   const labelStr = subtask.label || 'Untitled'
   const [titlePart, ...descParts] = labelStr.split(/[:\-–]/)
   const desc = descParts.join(' ').trim()
-  const borderColor = COLUMNS.find(c => c.id === subtask.status)?.color || '#9B9BAA'
+  const borderColor = COLUMNS.find(c => c.id === subtask.status)?.color || '#64748b'
 
   return (
     <div
@@ -82,21 +83,20 @@ function TaskCardContent({ subtask, isOverlay = false, onClick }: { subtask: Sub
       </div>
 
       {/* Title */}
-      <div style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.3, marginBottom: desc ? 4 : 0 }}>
+      <div style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.3, marginBottom: 4 }}>
         {titlePart.trim()}
       </div>
 
       {/* Description */}
-      {desc && (
-        <div
-          style={{
-            fontSize: 11, color: 'var(--theme-muted)', lineHeight: 1.3,
-            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'
-          }}
-        >
-          {desc}
-        </div>
-      )}
+      <div
+        style={{
+          fontSize: 11, color: 'var(--theme-muted)', lineHeight: 1.3,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+          minHeight: '2.6em'
+        }}
+      >
+        {desc}
+      </div>
 
       {/* Blocker bar */}
       {subtask.status === 'blocked' && subtask.blocked_reason && (
@@ -273,7 +273,13 @@ export function TaskBoard() {
 
   // Apply filters
   let tasks = milestone.subtasks
-  if (filter === 'blocked') tasks = tasks.filter((t) => t.status === 'blocked')
+  if (filter === 'blocked') {
+    tasks = tasks.filter((t) => t.status === 'blocked')
+  } else if (filter === 'my_tasks') {
+    tasks = tasks.filter((t) => t.assignee === 'human')
+  } else if (filter === 'agent_tasks') {
+    tasks = tasks.filter((t) => t.execution_mode === 'agent')
+  }
 
   function handleDragStart(event: DragStartEvent) {
     const { active } = event
@@ -451,28 +457,41 @@ export function TaskBoard() {
           { id: 'my_tasks', label: 'My Tasks', count: milestone.subtasks.filter((t) => t.assignee === 'human').length },
           { id: 'agent_tasks', label: 'Agent Tasks', count: milestone.subtasks.filter((t) => t.execution_mode === 'agent').length },
           { id: 'blocked', label: 'Blocked', count: milestone.subtasks.filter((t) => t.status === 'blocked').length }
-        ].map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setFilter(f.id)}
-            className="cursor-pointer transition-colors"
-            style={{
-              padding: '4px 12px', borderRadius: 16, fontSize: 11, fontWeight: 600,
-              background: filter === f.id ? '#585CF0' : 'transparent',
-              color: filter === f.id ? '#fff' : 'var(--theme-muted)',
-              border: filter === f.id ? 'none' : '1px solid transparent',
-              display: 'flex', alignItems: 'center', gap: 6
-            }}
-          >
-            {f.label}
-            <span className="mono" style={{ 
-              fontSize: 10, 
-              background: filter === f.id ? 'rgba(255,255,255,0.2)' : 'var(--theme-border)',
-              padding: '2px 6px', borderRadius: 10,
-              color: filter === f.id ? '#fff' : 'var(--theme-muted)'
-            }}>{f.count}</span>
-          </button>
-        ))}
+        ].map((f) => {
+          const isActive = filter === f.id;
+          return (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className="cursor-pointer transition-colors relative"
+              style={{
+                padding: '4px 12px', borderRadius: 16, fontSize: 11, fontWeight: 600,
+                color: isActive ? '#fff' : 'var(--theme-muted)',
+                border: isActive ? 'none' : '1px solid transparent',
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'transparent'
+              }}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="active-filter"
+                  className="absolute inset-0"
+                  style={{ background: '#585CF0', borderRadius: 16, zIndex: 0 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                />
+              )}
+              <span style={{ position: 'relative', zIndex: 1 }}>{f.label}</span>
+              <span className="mono" style={{ 
+                fontSize: 10, 
+                position: 'relative',
+                zIndex: 1,
+                background: isActive ? 'rgba(255,255,255,0.2)' : 'var(--theme-border)',
+                padding: '2px 6px', borderRadius: 10,
+                color: isActive ? '#fff' : 'var(--theme-muted)'
+              }}>{f.count}</span>
+            </button>
+          )
+        })}
       </div>
 
       {/* Kanban columns */}

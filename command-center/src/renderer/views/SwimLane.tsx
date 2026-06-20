@@ -19,7 +19,7 @@ const KEY_NODE_R = 26
 const DOMAIN_COLORS: Record<string, string> = {}
 const COLOR_PALETTE = [
   '#f59e0b', '#22c55e', '#8286FF', '#ef4444', '#14B8A6',
-  '#EC4899', '#F97316', '#6366F1', '#06B6D4', '#9B9BAA'
+  '#EC4899', '#F97316', '#6366F1', '#06B6D4', '#64748b'
 ]
 
 function getDomainColor(domain: string): string {
