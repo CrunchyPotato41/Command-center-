@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2026-06-20]
+##1.0.3- [2026-06-20]
 
 ### Added
 - Added `glob` dependency to MCP server for enhanced file tracking.
