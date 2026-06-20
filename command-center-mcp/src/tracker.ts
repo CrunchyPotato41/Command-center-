@@ -1,5 +1,98 @@
 import path from 'path';
 import fs from 'fs';
+import { z } from 'zod';
+
+// ─── Zod Schemas ──────────────────────────────────────────────
+export const ProjectMetaSchema = z.object({
+  name: z.string(),
+  start_date: z.string(),
+  target_date: z.string(),
+  current_week: z.number(),
+  schedule_status: z.enum(['on_track', 'behind', 'ahead']),
+  overall_progress: z.number()
+});
+
+export const SubtaskSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  status: z.enum(['todo', 'in_progress', 'review', 'done', 'blocked']),
+  done: z.boolean(),
+  assignee: z.string().nullable(),
+  blocked_by: z.string().nullable(),
+  blocked_reason: z.string().nullable(),
+  completed_at: z.string().nullable(),
+  completed_by: z.string().nullable(),
+  priority: z.string(),
+  notes: z.string().nullable(),
+  prompt: z.string().nullable(),
+  context_files: z.array(z.string()).catch([]),
+  reference_docs: z.array(z.string()).catch([]),
+  acceptance_criteria: z.array(z.string()).catch([]),
+  constraints: z.array(z.string()).catch([]),
+  agent_target: z.string().nullable(),
+  execution_mode: z.enum(['human', 'agent', 'pair']),
+  depends_on: z.array(z.string()).catch([]),
+  last_run_id: z.string().nullable(),
+  builder_prompt: z.string().nullable()
+});
+
+export const MilestoneSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  domain: z.string(),
+  week: z.number(),
+  phase: z.string(),
+  planned_start: z.string().nullable(),
+  planned_end: z.string().nullable(),
+  actual_start: z.string().nullable(),
+  actual_end: z.string().nullable(),
+  drift_days: z.number(),
+  is_key_milestone: z.boolean(),
+  key_milestone_label: z.string().nullable(),
+  subtasks: z.array(SubtaskSchema).catch([]),
+  dependencies: z.array(z.string()).catch([]),
+  notes: z.array(z.string()).catch([])
+});
+
+export const AgentSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.enum(['orchestrator', 'sub-agent', 'human', 'external']),
+  parent_id: z.string().optional(),
+  color: z.string(),
+  status: z.string(),
+  permissions: z.array(z.string()).catch([]),
+  last_action_at: z.string().nullable(),
+  session_action_count: z.number()
+});
+
+export const AgentLogEntrySchema = z.object({
+  id: z.string(),
+  agent_id: z.string(),
+  action: z.string(),
+  target_type: z.string(),
+  target_id: z.string(),
+  description: z.string(),
+  timestamp: z.string(),
+  tags: z.array(z.string()).catch([])
+});
+
+export const PhaseSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  start_week: z.number(),
+  end_week: z.number()
+});
+
+export const TrackerStateSchema = z.object({
+  project: ProjectMetaSchema,
+  milestones: z.array(MilestoneSchema).catch([]),
+  agents: z.array(AgentSchema).catch([]),
+  agent_log: z.array(AgentLogEntrySchema).catch([]),
+  schedule: z.object({
+    phases: z.array(PhaseSchema).catch([])
+  })
+});
 
 // ─── Root State ───────────────────────────────────────────────
 export interface TrackerState {
@@ -100,10 +193,15 @@ export interface Phase {
 }
 
 // ─── Utility Functions ────────────────────────────────────────
-export function resolveProjectRoot(): string {
+import { promises as fsp } from 'fs';
+
+let cachedProjectRoot: string | null = null;
+
+export function getProjectRoot(): string {
   let root = process.env.PROJECT_ROOT;
 
   if (!root) {
+    if (cachedProjectRoot) return cachedProjectRoot;
     let currentDir = process.cwd();
     while (currentDir !== path.parse(currentDir).root) {
       try {
@@ -128,18 +226,48 @@ export function resolveProjectRoot(): string {
       throw new Error('PROJECT_ROOT is not set. Please set it in .env or environment variable.');
   }
 
-  return path.normalize(path.resolve(root));
+  if (root.includes('..')) {
+      throw new Error('PROJECT_ROOT cannot contain path traversal characters (..)');
+  }
+
+  const resolved = path.normalize(path.resolve(root));
+  if (!process.env.PROJECT_ROOT) {
+    cachedProjectRoot = resolved;
+  }
+  return resolved;
 }
 
-export const PROJECT_ROOT = resolveProjectRoot();
-export const TRACKER_PATH = path.join(PROJECT_ROOT, 'project-tracker.json');
+export function getTrackerPath(): string {
+  return path.join(getProjectRoot(), 'project-tracker.json');
+}
 
-export function readTracker(): TrackerState {
-  if (!fs.existsSync(TRACKER_PATH)) {
-    throw new Error(`Tracker file not found at ${TRACKER_PATH}`);
+let lockPromise: Promise<void> | null = null;
+export async function withTrackerLock<T>(fn: () => Promise<T>): Promise<T> {
+  while (lockPromise) {
+    await lockPromise;
   }
-  const content = fs.readFileSync(TRACKER_PATH, 'utf-8');
-  return JSON.parse(content) as TrackerState;
+  let resolve!: () => void;
+  lockPromise = new Promise(r => resolve = r);
+  try {
+    return await fn();
+  } finally {
+    lockPromise = null;
+    resolve();
+  }
+}
+
+export async function readTracker(): Promise<TrackerState> {
+  const trackerPath = getTrackerPath();
+  try {
+    const content = await fsp.readFile(trackerPath, 'utf-8');
+    const parsed = JSON.parse(content);
+    return TrackerStateSchema.parse(parsed) as TrackerState;
+  } catch (err: any) {
+    if (err.code === 'ENOENT') {
+      throw new Error(`Tracker file not found at ${trackerPath}`);
+    }
+    throw err;
+  }
 }
 
 function selectCurrentWeek(tracker: TrackerState): number {
@@ -161,7 +289,7 @@ function selectScheduleStatus(tracker: TrackerState): 'on_track' | 'behind' | 'a
   return 'on_track';
 }
 
-export function writeTracker(state: TrackerState): void {
+export async function writeTracker(state: TrackerState): Promise<void> {
   let totalTasks = 0;
   let doneTasks = 0;
 
@@ -176,7 +304,10 @@ export function writeTracker(state: TrackerState): void {
   state.project.current_week = selectCurrentWeek(state);
   state.project.schedule_status = selectScheduleStatus(state);
 
-  fs.writeFileSync(TRACKER_PATH, JSON.stringify(state, null, 2), 'utf-8');
+  const trackerPath = getTrackerPath();
+  const tmpPath = `${trackerPath}.tmp.${Date.now()}`;
+  await fsp.writeFile(tmpPath, JSON.stringify(state, null, 2), 'utf-8');
+  await fsp.rename(tmpPath, trackerPath);
 }
 
 export function findTask(state: TrackerState, taskId: string): { subtask: Subtask, milestone: Milestone } | null {

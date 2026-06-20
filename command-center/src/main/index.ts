@@ -13,8 +13,7 @@ let watcher: chokidar.FSWatcher | null = null
 
 ipcMain.handle('tracker:read', async () => {
   try {
-    if (!fs.existsSync(TRACKER_PATH)) return null
-    return fs.readFileSync(TRACKER_PATH, 'utf-8')
+    return await fs.promises.readFile(TRACKER_PATH, 'utf-8')
   } catch {
     return null
   }
@@ -22,8 +21,12 @@ ipcMain.handle('tracker:read', async () => {
 
 ipcMain.handle('tracker:write', async (_event, json: string) => {
   try {
+    if (typeof json !== 'string') throw new Error('Invalid input: not a string')
+    if (json.length > 50 * 1024 * 1024) throw new Error('Input too large')
+    JSON.parse(json) // Validate JSON
+    
+    await fs.promises.writeFile(TRACKER_PATH, json, 'utf-8')
     lastWriteTime = Date.now()
-    fs.writeFileSync(TRACKER_PATH, json, 'utf-8')
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err.message }
@@ -36,9 +39,7 @@ ipcMain.handle('tracker:path', async () => {
 
 ipcMain.handle('tracker:fileInfo', async () => {
   try {
-    const exists = fs.existsSync(TRACKER_PATH)
-    if (!exists) return { exists: false, size: 0, lastModified: '', watcherActive }
-    const stats = fs.statSync(TRACKER_PATH)
+    const stats = await fs.promises.stat(TRACKER_PATH)
     return {
       exists: true,
       size: stats.size,
@@ -90,12 +91,13 @@ function startWatcher(trackerPath: string, win: BrowserWindow): void {
 
   watcherActive = true
 
-  watcher.on('change', () => {
+  watcher.on('change', async () => {
     if (Date.now() - lastWriteTime < 1000) return
 
     try {
-      const content = fs.readFileSync(trackerPath, 'utf-8')
+      const content = await fs.promises.readFile(trackerPath, 'utf-8')
       JSON.parse(content) // Validate before sending
+      if (win.isDestroyed()) return
       win.webContents.send('tracker:updated', content)
     } catch {
       // Ignore corrupt JSON (file might be mid-write)
@@ -106,10 +108,7 @@ function startWatcher(trackerPath: string, win: BrowserWindow): void {
     console.error('[chokidar] watcher error:', err)
   })
 
-  app.once('before-quit', () => {
-    if (watcher) watcher.close()
-    watcherActive = false
-  })
+
 }
 
 // ─── Window Creation ─────────────────────────────────────────
@@ -147,6 +146,15 @@ function createWindow(): void {
   }
 
   startWatcher(TRACKER_PATH, mainWindow)
+
+  mainWindow.on('closed', () => {
+    if (watcher) {
+      watcher.close()
+      watcher = null
+    }
+    watcherActive = false
+    mainWindow = null
+  })
 }
 
 // ─── App Lifecycle ───────────────────────────────────────────

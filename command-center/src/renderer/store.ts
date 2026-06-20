@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { produce } from 'immer'
 
 // ─── Types (mirrored from tracker schema) ────────────────────
 
@@ -160,14 +161,21 @@ let suppressExternalRefresh = false
 
 function scheduleWriteBack(tracker: TrackerState) {
   if (writeTimer) clearTimeout(writeTimer)
-  writeTimer = setTimeout(() => {
+  writeTimer = setTimeout(async () => {
     suppressExternalRefresh = true
-    window.api.tracker.write(JSON.stringify(tracker, null, 2))
-
-    if (suppressTimer) clearTimeout(suppressTimer)
-    suppressTimer = setTimeout(() => {
-      suppressExternalRefresh = false
-    }, 700)
+    try {
+      const res = await window.api.tracker.write(JSON.stringify(tracker, null, 2))
+      if (res && !res.success) {
+        useStore.getState().setError(res.error || 'Failed to write tracker data')
+      }
+    } catch (err: any) {
+      useStore.getState().setError(err.message || 'Write failed')
+    } finally {
+      if (suppressTimer) clearTimeout(suppressTimer)
+      suppressTimer = setTimeout(() => {
+        suppressExternalRefresh = false
+      }, 700)
+    }
   }, 500)
 }
 
@@ -213,22 +221,24 @@ export const useStore = create<AppState>((set, get) => ({
   updateTracker: (updater) => {
     const tracker = get().tracker
     if (!tracker) return
-    const next: TrackerState = JSON.parse(JSON.stringify(tracker))
-    updater(next)
+    
+    const nextTracker = produce(tracker, (draft) => {
+      updater(draft as TrackerState)
 
-    // Recompute derived fields
-    const total = next.milestones.reduce((s, m) => s + m.subtasks.length, 0)
-    const done = next.milestones.reduce(
-      (s, m) => s + m.subtasks.filter((t) => t.done).length,
-      0
-    )
-    next.project.overall_progress =
-      total > 0 ? parseFloat((done / total).toFixed(4)) : 0
-    next.project.current_week = selectCurrentWeek(next)
-    next.project.schedule_status = selectScheduleStatus(next)
+      // Recompute derived fields
+      const total = draft.milestones.reduce((s, m) => s + m.subtasks.length, 0)
+      const done = draft.milestones.reduce(
+        (s, m) => s + m.subtasks.filter((t) => t.done).length,
+        0
+      )
+      draft.project.overall_progress =
+        total > 0 ? parseFloat((done / total).toFixed(4)) : 0
+      draft.project.current_week = selectCurrentWeek(draft as TrackerState)
+      draft.project.schedule_status = selectScheduleStatus(draft as TrackerState)
+    })
 
-    set({ tracker: next })
-    scheduleWriteBack(next)
+    set({ tracker: nextTracker })
+    scheduleWriteBack(nextTracker)
   },
 
   setActiveTab: (tab) => set({ activeTab: tab }),

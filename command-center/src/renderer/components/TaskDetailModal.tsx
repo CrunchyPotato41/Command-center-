@@ -10,6 +10,7 @@ interface Props {
 export function TaskDetailModal({ subtask, milestone, onClose }: Props) {
   const tracker = useStore((s) => s.tracker)
   const updateTracker = useStore((s) => s.updateTracker)
+  const setActiveTab = useStore((s) => s.setActiveTab)
   const [activeTab, setActiveTab] = useState<'details' | 'history'>('details')
   const [status, setStatus] = useState(subtask.status)
   const [priority, setPriority] = useState(subtask.priority)
@@ -20,7 +21,7 @@ export function TaskDetailModal({ subtask, milestone, onClose }: Props) {
   const [blockedReason, setBlockedReason] = useState(subtask.blocked_reason || '')
   const [copied, setCopied] = useState(false)
 
-  const agentLog = tracker?.agent_log.filter((l) => l.target_id === subtask.id) || []
+  const agentLog = (tracker?.agent_log ?? []).filter((l) => l.target_id === subtask.id)
 
   function handleSave() {
     updateTracker((draft) => {
@@ -93,7 +94,7 @@ export function TaskDetailModal({ subtask, milestone, onClose }: Props) {
           </div>
           
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--theme-primary-text)', lineHeight: 1.3, marginBottom: 8 }}>
-            {subtask.label.split(/[:\-–]/)[0].trim()}: {subtask.label.split(/[:\-–]/).slice(1).join(' ').trim()}
+            {(subtask.label || 'Untitled').split(/[:\-–]/)[0].trim()}: {((subtask.label || 'Untitled').split(/[:\-–]/).slice(1).join(' ').trim())}
           </div>
           
           <div className="flex items-center gap-2 mb-6">
@@ -218,18 +219,18 @@ export function TaskDetailModal({ subtask, milestone, onClose }: Props) {
               {/* Other tasks in this milestone */}
               <div>
                 <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-muted)', display: 'block', marginBottom: 8, letterSpacing: '0.05em' }}>
-                  OTHER TASKS IN THIS MILESTONE ({milestone.subtasks.length - 1})
+                  OTHER TASKS IN THIS MILESTONE ({(milestone.subtasks ?? []).length - 1})
                 </label>
                 <div className="flex flex-col gap-2">
-                  {milestone.subtasks.filter(t => t.id !== subtask.id).slice(0, 5).map(t => (
+                  {(milestone.subtasks ?? []).filter(t => t.id !== subtask.id).slice(0, 5).map(t => (
                     <div key={t.id} className="flex items-center gap-2" style={{ fontSize: 12, color: 'var(--theme-muted)' }}>
                       <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--theme-border)' }} />
-                      <div className="truncate">{t.label}</div>
+                      <div className="truncate">{t.label || 'Untitled'}</div>
                     </div>
                   ))}
-                  {milestone.subtasks.length > 6 && (
+                  {(milestone.subtasks ?? []).length > 6 && (
                     <div style={{ fontSize: 12, color: 'var(--theme-muted)', paddingLeft: 14 }}>
-                      + {milestone.subtasks.length - 6} more
+                      + {(milestone.subtasks ?? []).length - 6} more
                     </div>
                   )}
                 </div>
@@ -257,6 +258,10 @@ export function TaskDetailModal({ subtask, milestone, onClose }: Props) {
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-primary-text)' }}>{milestone.title}</div>
                 </div>
                 <button
+                  onClick={() => {
+                    setActiveTab('swim-lane')
+                    onClose()
+                  }}
                   className="cursor-pointer"
                   style={{ fontSize: 11, fontWeight: 600, color: '#585CF0', background: 'transparent', border: '1px solid #585CF040', padding: '6px 12px', borderRadius: 6 }}
                 >
@@ -305,15 +310,13 @@ export function TaskDetailModal({ subtask, milestone, onClose }: Props) {
               <span style={{ fontSize: 11, color: 'var(--theme-muted)' }}>Status: {status}</span>
               <button
                 onClick={() => {
-                  if (confirm('Are you sure you want to delete this task?')) {
-                    updateTracker((draft) => {
-                      const m = draft.milestones.find((ms) => ms.id === milestone.id)
-                      if (m) {
-                        m.subtasks = m.subtasks.filter((t) => t.id !== subtask.id)
-                      }
-                    })
-                    onClose()
-                  }
+                  updateTracker((draft) => {
+                    const m = draft.milestones.find((ms) => ms.id === milestone.id)
+                    if (m) {
+                      m.subtasks = (m.subtasks ?? []).filter((t) => t.id !== subtask.id)
+                    }
+                  })
+                  onClose()
                 }}
                 className="cursor-pointer transition-opacity hover:opacity-80"
                 style={{

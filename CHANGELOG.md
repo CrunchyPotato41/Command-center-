@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026-06-20]
+
+### Added
+- Added `glob` dependency to MCP server for enhanced file tracking.
+- Introduced new MCP tools for project and milestone tracking.
+
+### Fixed
+- Fixed drag-and-drop React state handling for active tasks (`activeTask` to `activeTaskId`).
+- Replaced unreliable `Math.random` ID generation with standard `crypto.randomUUID()`.
+- Improved color generation for domains using a deterministic hash instead of random assignment.
+- Updated "My Tasks" filter logic to include tasks assigned to the `operator`.
+
 ## [1.0.2] - 2026-06-19
 
 ### Changed

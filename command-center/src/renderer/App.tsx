@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { useStore } from './store'
+import { useStore, isSuppressed } from './store'
 import { TabBar } from './components/TabBar'
 import { StatusBar } from './components/StatusBar'
 
@@ -23,12 +23,23 @@ export default function App() {
   useEffect(() => {
     // Initial read
     window.api.tracker.read().then((data) => {
-      if (data) setTracker(JSON.parse(data))
+      if (data) {
+        try {
+          setTracker(JSON.parse(data))
+        } catch (err) {
+          console.error('Failed to parse tracker data on initial read:', err)
+        }
+      }
     })
 
     // Listen for updates from main process
     const unlisten = window.api.tracker.onUpdated((json) => {
-      setTracker(JSON.parse(json))
+      if (isSuppressed()) return
+      try {
+        setTracker(JSON.parse(json))
+      } catch (err) {
+        console.error('Failed to parse tracker data on update:', err)
+      }
     })
 
     return () => {

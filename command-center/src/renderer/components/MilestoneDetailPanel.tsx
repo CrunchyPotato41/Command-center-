@@ -101,23 +101,35 @@ export function MilestoneDetailPanel({ milestone, onClose }: Props) {
     }
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') onClose()
+  }
+
   return (
-    <div
-      className="animate-slide-in"
-      style={{
-        position: 'absolute',
-        right: 0,
-        top: 0,
-        bottom: 0,
-        width: 480,
-        background: 'var(--theme-surface)',
-        borderLeft: '1px solid var(--theme-border)',
-        zIndex: 30,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden'
-      }}
-    >
+    <>
+      <div 
+        className="fixed inset-0 z-20" 
+        style={{ background: 'rgba(0,0,0,0.1)' }} 
+        onClick={onClose}
+      />
+      <div
+        className="animate-slide-in"
+        style={{
+          position: 'absolute',
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: 480,
+          background: 'var(--theme-surface)',
+          borderLeft: '1px solid var(--theme-border)',
+          zIndex: 30,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}
+        onKeyDown={handleKeyDown}
+        tabIndex={-1}
+      >
       {/* Header */}
       <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--theme-border)' }}>
         <div className="flex items-center justify-between mb-2">
@@ -237,21 +249,22 @@ export function MilestoneDetailPanel({ milestone, onClose }: Props) {
           <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--theme-muted)' }}>
             SUBTASKS — {done}/{total}
           </div>
-          {milestone.subtasks.length === 0 ? (
+          {(milestone.subtasks ?? []).length === 0 ? (
             <div style={{ fontSize: 11, color: 'var(--theme-muted)', opacity: 0.5 }}>No tasks yet</div>
           ) : (
             <div className="flex flex-col gap-2">
-              {milestone.subtasks.map((task) => {
+              {(milestone.subtasks ?? []).map((task) => {
                 // Determine priority colors
                 let pBg = 'var(--theme-border)'
                 let pColor = 'var(--theme-muted)'
-                if (task.priority === 'P1') {
+                const normalizedPriority = (task.priority || '').toUpperCase()
+                if (normalizedPriority === 'P1') {
                   pBg = 'rgba(239, 68, 68, 0.1)'
                   pColor = '#ef4444'
-                } else if (task.priority === 'P2') {
+                } else if (normalizedPriority === 'P2') {
                   pBg = 'rgba(245, 158, 11, 0.1)'
                   pColor = '#f59e0b'
-                } else if (task.priority === 'P3') {
+                } else if (normalizedPriority === 'P3') {
                   pBg = 'rgba(34, 197, 94, 0.1)'
                   pColor = '#22c55e'
                 }
@@ -306,7 +319,7 @@ export function MilestoneDetailPanel({ milestone, onClose }: Props) {
                       <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--theme-muted)', opacity: 0.5 }} />
                       
                       <span className="tag mono" style={{ background: pBg, color: pColor, fontSize: 9, fontWeight: 700 }}>
-                        {task.priority}
+                        {normalizedPriority}
                       </span>
                     </div>
                   </div>
@@ -436,6 +449,6 @@ export function MilestoneDetailPanel({ milestone, onClose }: Props) {
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }

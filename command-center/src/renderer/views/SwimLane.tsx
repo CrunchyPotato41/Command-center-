@@ -16,18 +16,18 @@ const HEADER_H = 44
 const NODE_R = 20
 const KEY_NODE_R = 26
 
-const DOMAIN_COLORS: Record<string, string> = {}
 const COLOR_PALETTE = [
   '#f59e0b', '#22c55e', '#8286FF', '#ef4444', '#14B8A6',
   '#EC4899', '#F97316', '#6366F1', '#06B6D4', '#64748b'
 ]
 
 function getDomainColor(domain: string): string {
-  if (!DOMAIN_COLORS[domain]) {
-    const idx = Object.keys(DOMAIN_COLORS).length % COLOR_PALETTE.length
-    DOMAIN_COLORS[domain] = COLOR_PALETTE[idx]
+  let hash = 0
+  for (let i = 0; i < domain.length; i++) {
+    hash = domain.charCodeAt(i) + ((hash << 5) - hash)
   }
-  return DOMAIN_COLORS[domain]
+  const idx = Math.abs(hash) % COLOR_PALETTE.length
+  return COLOR_PALETTE[idx]
 }
 
 function formatWeekDate(startDate: string, weekIdx: number): string {

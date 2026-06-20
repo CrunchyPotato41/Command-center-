@@ -249,7 +249,7 @@ export function TaskBoard() {
   const [milestoneIdx, setMilestoneIdx] = useState(0)
   const [selectedTask, setSelectedTask] = useState<Subtask | null>(null)
   const [filter, setFilter] = useState<string>('all')
-  const [activeTask, setActiveTask] = useState<Subtask | null>(null)
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -271,24 +271,25 @@ export function TaskBoard() {
   const milestone = tracker.milestones[milestoneIdx] || tracker.milestones[0]
   const { done, total, pct } = selectMilestoneProgress(milestone)
 
+  const activeTask = activeTaskId ? milestone.subtasks.find(t => t.id === activeTaskId) : null
+
   // Apply filters
   let tasks = milestone.subtasks
   if (filter === 'blocked') {
     tasks = tasks.filter((t) => t.status === 'blocked')
   } else if (filter === 'my_tasks') {
-    tasks = tasks.filter((t) => t.assignee === 'human')
+    tasks = tasks.filter((t) => t.assignee === 'human' || t.assignee === 'operator')
   } else if (filter === 'agent_tasks') {
     tasks = tasks.filter((t) => t.execution_mode === 'agent')
   }
 
   function handleDragStart(event: DragStartEvent) {
     const { active } = event
-    const task = tasks.find((t) => t.id === active.id)
-    if (task) setActiveTask(task)
+    setActiveTaskId(active.id as string)
   }
 
   function handleDragCancel() {
-    setActiveTask(null)
+    setActiveTaskId(null)
   }
 
   const customCollisionDetection: CollisionDetection = (args) => {
@@ -300,7 +301,7 @@ export function TaskBoard() {
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    setActiveTask(null)
+    setActiveTaskId(null)
     const { active, over } = event
     if (!over) return
 
@@ -378,7 +379,7 @@ export function TaskBoard() {
         {/* Add Task Button */}
         <button
           onClick={() => {
-            const id = `MS_${Date.now()}_${Math.floor(Math.random()*1000)}`
+            const id = crypto.randomUUID()
             updateTracker(draft => {
               const m = draft.milestones[milestoneIdx]
               if (m) {
@@ -454,7 +455,7 @@ export function TaskBoard() {
       <div className="flex items-center gap-2 px-4 py-2" style={{ borderBottom: '1px solid var(--theme-border)', background: 'var(--theme-surface)' }}>
         {[
           { id: 'all', label: 'All', count: milestone.subtasks.length },
-          { id: 'my_tasks', label: 'My Tasks', count: milestone.subtasks.filter((t) => t.assignee === 'human').length },
+          { id: 'my_tasks', label: 'My Tasks', count: milestone.subtasks.filter((t) => t.assignee === 'human' || t.assignee === 'operator').length },
           { id: 'agent_tasks', label: 'Agent Tasks', count: milestone.subtasks.filter((t) => t.execution_mode === 'agent').length },
           { id: 'blocked', label: 'Blocked', count: milestone.subtasks.filter((t) => t.status === 'blocked').length }
         ].map((f) => {
@@ -513,7 +514,7 @@ export function TaskBoard() {
                 domain={milestone.domain}
                 onCardClick={setSelectedTask}
                 onAddTask={(status) => {
-                  const id = `MS_${Date.now()}_${Math.floor(Math.random()*1000)}`
+                  const id = crypto.randomUUID()
                   updateTracker(draft => {
                     const m = draft.milestones[milestoneIdx]
                     if (m) {

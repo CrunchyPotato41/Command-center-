@@ -1,8 +1,10 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import crypto from 'crypto';
 import { 
   TrackerState, 
   readTracker, 
   writeTracker, 
+  withTrackerLock,
   findTask, 
   touchAgent, 
   autoUnblockDependents,
@@ -228,20 +230,19 @@ export const toolDefinitions: Tool[] = [
   }
 ];
 
-export function handleTool(name: string, args: Record<string, any>): { content: { type: 'text', text: string }[], isError?: boolean } {
-  let state: TrackerState;
+export async function handleTool(name: string, args: Record<string, any>): Promise<{ content: { type: 'text', text: string }[], isError?: boolean }> {
   try {
-    state = readTracker();
+    return await withTrackerLock(async () => {
+      const state = await readTracker();
+      const result = await processTool(name, args, state);
+      return result;
+    });
   } catch (err: any) {
-    return { content: [{ type: 'text', text: `Error reading tracker: ${err.message}` }], isError: true };
+    return { content: [{ type: 'text', text: `Tool execution failed: ${err.message}` }], isError: true };
   }
-
-  const result = processTool(name, args, state);
-
-  return result;
 }
 
-function processTool(name: string, args: Record<string, any>, state: TrackerState): { content: { type: 'text', text: string }[], isError?: boolean } {
+async function processTool(name: string, args: Record<string, any>, state: TrackerState): Promise<{ content: { type: 'text', text: string }[], isError?: boolean }> {
   const genId = () => `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const now = new Date().toISOString();
 
@@ -279,11 +280,14 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
         }
       }
       
+      if (filtered.length === 0) {
+        return { content: [{ type: 'text', text: 'No tasks found.' }] };
+      }
       let text = `# Task List\n\n`;
       filtered.forEach(f => {
         text += `- [${f.task.status}] ${f.task.label} (ID: ${f.task.id}, Milestone: ${f.milestone.title})\n`;
       });
-      return { content: [{ type: 'text', text: text || 'No tasks found.' }] };
+      return { content: [{ type: 'text', text }] };
     }
 
     case 'get_task_history': {
@@ -297,11 +301,14 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
     }
 
     case 'list_agents': {
+      if (state.agents.length === 0) {
+        return { content: [{ type: 'text', text: 'No agents registered.' }] };
+      }
       let text = `# Registered Agents\n\n`;
       state.agents.forEach(a => {
         text += `- **${a.name}** (${a.id}) - Type: ${a.type}, Status: ${a.status}, Actions: ${a.session_action_count}\n`;
       });
-      return { content: [{ type: 'text', text: text || 'No agents registered.' }] };
+      return { content: [{ type: 'text', text }] };
     }
 
     case 'get_activity_feed': {
@@ -310,17 +317,24 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
       if (args.limit) sorted = sorted.slice(0, args.limit);
       else sorted = sorted.slice(0, 30);
       
+      if (sorted.length === 0) {
+        return { content: [{ type: 'text', text: 'No activity.' }] };
+      }
       let text = `# Activity Feed\n\n`;
       sorted.forEach(l => {
         text += `- [${l.timestamp}] **${l.agent_id}**: ${l.description} (${l.action})\n`;
       });
-      return { content: [{ type: 'text', text: text || 'No activity.' }] };
+      return { content: [{ type: 'text', text }] };
     }
 
     case 'start_task': {
       const found = findTask(state, args.task_id);
       if (!found) return { content: [{ type: 'text', text: `Task '${args.task_id}' not found` }], isError: true };
       
+      if (found.subtask.status === 'done' || found.subtask.status === 'review') {
+        return { content: [{ type: 'text', text: `Cannot start task '${args.task_id}' from status '${found.subtask.status}'` }], isError: true };
+      }
+
       found.subtask.status = 'in_progress';
       const agentId = args.agent_id || 'orchestrator';
       if (!found.subtask.assignee) found.subtask.assignee = agentId;
@@ -337,7 +351,7 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
 
       state.agent_log.push({ id: genId(), agent_id: agentId, action: 'task_started', target_type: 'subtask', target_id: args.task_id, description: `Task started`, timestamp: now, tags: ['start', 'mcp'] });
       touchAgent(state, agentId);
-      writeTracker(state);
+      await writeTracker(state);
       return { content: [{ type: 'text', text: `Task ${args.task_id} started in milestone ${found.milestone.title}` }] };
     }
 
@@ -345,6 +359,10 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
       const found = findTask(state, args.task_id);
       if (!found) return { content: [{ type: 'text', text: `Task '${args.task_id}' not found` }], isError: true };
       
+      if (found.subtask.status !== 'in_progress') {
+        return { content: [{ type: 'text', text: `Cannot complete task '${args.task_id}' from status '${found.subtask.status}', expected 'in_progress'` }], isError: true };
+      }
+
       found.subtask.status = 'review';
       found.subtask.blocked_by = null;
       found.subtask.blocked_reason = null;
@@ -352,7 +370,7 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
       
       state.agent_log.push({ id: genId(), agent_id: agentId, action: 'task_submitted_for_review', target_type: 'subtask', target_id: args.task_id, description: args.summary, timestamp: now, tags: ['review', 'mcp'] });
       touchAgent(state, agentId);
-      writeTracker(state);
+      await writeTracker(state);
       return { content: [{ type: 'text', text: `Task ${args.task_id} submitted for review. Summary: ${args.summary}` }] };
     }
 
@@ -370,7 +388,7 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
       
       state.agent_log.push({ id: genId(), agent_id: 'operator', action: 'task_approved', target_type: 'subtask', target_id: args.task_id, description: `Task approved. ${args.feedback || ''}`, timestamp: now, tags: ['approve', 'mcp'] });
       touchAgent(state, 'operator');
-      writeTracker(state);
+      await writeTracker(state);
       
       return { content: [{ type: 'text', text: `Task ${args.task_id} approved.\nUnblocked: ${unblocked.join(', ')}` }] };
     }
@@ -385,7 +403,7 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
       
       state.agent_log.push({ id: genId(), agent_id: 'operator', action: 'revision_requested', target_type: 'subtask', target_id: args.task_id, description: `Revision ${priorRevisions + 1} requested: ${args.feedback}`, timestamp: now, tags: ['reject', 'mcp'] });
       touchAgent(state, 'operator');
-      writeTracker(state);
+      await writeTracker(state);
       return { content: [{ type: 'text', text: `Task ${args.task_id} rejected. Revision ${priorRevisions + 1}. Feedback: ${args.feedback}` }] };
     }
 
@@ -403,20 +421,23 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
       found.subtask.last_run_id = null;
       
       state.agent_log.push({ id: genId(), agent_id: 'operator', action: 'task_reset', target_type: 'subtask', target_id: args.task_id, description: `Task reset from ${prev}`, timestamp: now, tags: ['reset', 'mcp'] });
-      writeTracker(state);
+      await writeTracker(state);
       return { content: [{ type: 'text', text: `Task ${args.task_id} reset to todo (was ${prev}).` }] };
     }
 
     case 'block_task': {
       const found = findTask(state, args.task_id);
       if (!found) return { content: [{ type: 'text', text: `Task '${args.task_id}' not found` }], isError: true };
+      if (found.subtask.status === 'done') {
+        return { content: [{ type: 'text', text: `Cannot block task '${args.task_id}' because it is already 'done'` }], isError: true };
+      }
       found.subtask.status = 'blocked';
       found.subtask.blocked_reason = args.reason;
       found.subtask.blocked_by = 'orchestrator';
       
       state.agent_log.push({ id: genId(), agent_id: 'orchestrator', action: 'task_blocked', target_type: 'subtask', target_id: args.task_id, description: `Blocked: ${args.reason}`, timestamp: now, tags: ['block', 'mcp'] });
       touchAgent(state, 'orchestrator');
-      writeTracker(state);
+      await writeTracker(state);
       return { content: [{ type: 'text', text: `Task ${args.task_id} marked as blocked.` }] };
     }
 
@@ -431,7 +452,7 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
       
       state.agent_log.push({ id: genId(), agent_id: 'orchestrator', action: 'task_unblocked', target_type: 'subtask', target_id: args.task_id, description: `Unblocked: ${args.resolution || ''}`, timestamp: now, tags: ['unblock', 'mcp'] });
       touchAgent(state, 'orchestrator');
-      writeTracker(state);
+      await writeTracker(state);
       return { content: [{ type: 'text', text: `Task ${args.task_id} unblocked (was blocked by: ${oldReason}). Status is now ${found.subtask.status}` }] };
     }
 
@@ -445,9 +466,13 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
       if (args.execution_mode !== undefined) { found.subtask.execution_mode = args.execution_mode; changes.push('execution_mode'); }
       if (args.notes !== undefined) { found.subtask.notes = args.notes; changes.push('notes'); }
       
+      if (changes.length === 0) {
+        return { content: [{ type: 'text', text: `No changes provided for task ${args.task_id}` }] };
+      }
+      
       state.agent_log.push({ id: genId(), agent_id: 'orchestrator', action: 'task_updated', target_type: 'subtask', target_id: args.task_id, description: `Updated ${changes.join(', ')}`, timestamp: now, tags: ['update', 'mcp'] });
       touchAgent(state, 'orchestrator');
-      writeTracker(state);
+      await writeTracker(state);
       return { content: [{ type: 'text', text: `Task ${args.task_id} updated: ${changes.join(', ')}` }] };
     }
 
@@ -457,7 +482,7 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
       if (!tags.includes('mcp')) tags.push('mcp');
       state.agent_log.push({ id: genId(), agent_id: agentId, action: args.action, target_type: 'entity', target_id: args.task_id, description: args.description, timestamp: now, tags });
       touchAgent(state, agentId);
-      writeTracker(state);
+      await writeTracker(state);
       return { content: [{ type: 'text', text: `Action logged successfully.` }] };
     }
 
@@ -475,7 +500,7 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
       
       state.agent_log.push({ id: genId(), agent_id: 'orchestrator', action: 'task_enriched', target_type: 'subtask', target_id: args.task_id, description: `Enriched ${changes.join(', ')}`, timestamp: now, tags: ['enrich', 'mcp'] });
       touchAgent(state, 'orchestrator');
-      writeTracker(state);
+      await writeTracker(state);
       return { content: [{ type: 'text', text: `Task ${args.task_id} enriched: ${changes.join(', ')}` }] };
     }
 
@@ -486,7 +511,7 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
       milestone.notes.push(args.note);
       
       state.agent_log.push({ id: genId(), agent_id: 'orchestrator', action: 'milestone_note_added', target_type: 'milestone', target_id: args.milestone_id, description: `Added note: ${args.note}`, timestamp: now, tags: ['note', 'mcp'] });
-      writeTracker(state);
+      await writeTracker(state);
       return { content: [{ type: 'text', text: `Note added. Total notes: ${milestone.notes.length}` }] };
     }
 
@@ -497,14 +522,18 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
       if (args.actual_start !== undefined) milestone.actual_start = args.actual_start;
       if (args.actual_end !== undefined) milestone.actual_end = args.actual_end;
       
-      if (milestone.actual_start && milestone.planned_start) {
+      if (milestone.actual_end && milestone.planned_end) {
+        const actual = new Date(milestone.actual_end + "T00:00:00");
+        const planned = new Date(milestone.planned_end + "T00:00:00");
+        milestone.drift_days = Math.round((actual.getTime() - planned.getTime()) / (1000 * 60 * 60 * 24));
+      } else if (milestone.actual_start && milestone.planned_start) {
         const actual = new Date(milestone.actual_start + "T00:00:00");
         const planned = new Date(milestone.planned_start + "T00:00:00");
         milestone.drift_days = Math.round((actual.getTime() - planned.getTime()) / (1000 * 60 * 60 * 24));
       }
       
       state.agent_log.push({ id: genId(), agent_id: 'orchestrator', action: 'milestone_dates_set', target_type: 'milestone', target_id: args.milestone_id, description: `Dates set`, timestamp: now, tags: ['milestone', 'mcp'] });
-      writeTracker(state);
+      await writeTracker(state);
       return { content: [{ type: 'text', text: `Milestone dates updated. Drift is now ${milestone.drift_days} days.` }] };
     }
 
@@ -515,7 +544,7 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
       milestone.drift_days = args.drift_days;
       
       state.agent_log.push({ id: genId(), agent_id: 'orchestrator', action: 'drift_updated', target_type: 'milestone', target_id: args.milestone_id, description: `Drift updated ${old} -> ${args.drift_days}`, timestamp: now, tags: ['drift', 'mcp'] });
-      writeTracker(state);
+      await writeTracker(state);
       return { content: [{ type: 'text', text: `Drift updated to ${args.drift_days}.` }] };
     }
 
@@ -539,7 +568,7 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
         week: 1
       };
       state.milestones.push(newM);
-      writeTracker(state);
+      await writeTracker(state);
       return { content: [{ type: 'text', text: `Milestone ${args.id} created.` }] };
     }
 
@@ -547,8 +576,7 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
       const milestone = state.milestones.find(m => m.id === args.milestone_id);
       if (!milestone) return { content: [{ type: 'text', text: `Milestone '${args.milestone_id}' not found` }], isError: true };
       
-      const idx = milestone.subtasks.length + 1;
-      const taskId = `${args.milestone_id}_${idx.toString().padStart(3, '0')}`;
+      const taskId = crypto.randomUUID();
       
       const newT: Subtask = {
         id: taskId,
@@ -575,7 +603,7 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
       };
       
       milestone.subtasks.push(newT);
-      writeTracker(state);
+      await writeTracker(state);
       return { content: [{ type: 'text', text: `Task created with ID ${taskId}` }] };
     }
 
@@ -603,7 +631,7 @@ function processTool(name: string, args: Record<string, any>, state: TrackerStat
         });
       }
       state.agent_log.push({ id: genId(), agent_id: 'orchestrator', action: agent ? 'agent_updated' : 'agent_registered', target_type: 'agent', target_id: args.agent_id, description: `Agent ${args.agent_id} registered`, timestamp: now, tags: ['agent', 'mcp'] });
-      writeTracker(state);
+      await writeTracker(state);
       return { content: [{ type: 'text', text: `Agent ${args.agent_id} registered.` }] };
     }
 

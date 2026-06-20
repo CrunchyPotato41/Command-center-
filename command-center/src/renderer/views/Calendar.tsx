@@ -21,13 +21,14 @@ function formatDate(d: Date): string {
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-const DOMAIN_COLORS: Record<string, string> = {}
 const PALETTE = ['#f59e0b', '#22c55e', '#8286FF', '#ef4444', '#14B8A6', '#EC4899', '#F97316', '#6366F1']
 function getDomainColor(domain: string): string {
-  if (!DOMAIN_COLORS[domain]) {
-    DOMAIN_COLORS[domain] = PALETTE[Object.keys(DOMAIN_COLORS).length % PALETTE.length]
+  let hash = 0
+  for (let i = 0; i < domain.length; i++) {
+    hash = domain.charCodeAt(i) + ((hash << 5) - hash)
   }
-  return DOMAIN_COLORS[domain]
+  const idx = Math.abs(hash) % PALETTE.length
+  return PALETTE[idx]
 }
 
 export function Calendar() {
@@ -38,7 +39,7 @@ export function Calendar() {
 
   function handleAddTask(date: Date) {
     if (!tracker) return
-    const id = `MS_${Math.floor(Math.random()*10000)}`
+    const id = crypto.randomUUID()
     updateTracker(draft => {
       // Just put it in the first milestone for now
       const m = draft.milestones[0]
@@ -66,8 +67,6 @@ export function Calendar() {
           last_run_id: null,
           builder_prompt: null
         })
-        // Set the planned_end to this date so it shows on this day
-        m.planned_end = date.toISOString().split('T')[0]
       }
     })
   }
